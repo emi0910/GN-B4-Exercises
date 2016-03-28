@@ -1,0 +1,127 @@
+#+TITLE: SlackBot
+#+AUTHOR: Nomura Laboratory, Okayama University
+#+EMAIL:
+#+DATE:
+#+OPTIONS: H:3 num:2 toc:nil
+#+OPTIONS: ^:nil @:t \n:nil ::t |:t f:t TeX:t
+#+OPTIONS: skip:nil
+#+OPTIONS: author:t
+#+OPTIONS: email:nil
+#+OPTIONS: creator:nil
+#+OPTIONS: timestamp:nil
+#+OPTIONS: timestamps:nil
+#+OPTIONS: d:nil
+#+OPTIONS: tags:t
+#+TEXT:
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE: ja
+#+STARTUP: odd
+#+LATEX_CLASS: jsarticle
+#+LATEX_CLASS_OPTIONS: [a4j]
+# #+LATEX_HEADER: \usepackage{plain-article}
+# #+LATEX_HEADER: \renewcommand\maketitle{}
+# #+LATEX_HEADER: \pagestyle{empty}
+# #+LaTeX: \thispagestyle{empty}
+
+* SlackBot
+** Settings
+   + gemのインストール
+     + 以下のコマンドを実行し，gemをインストール\\
+       : $ bundle install --path vendor/bundle
+   + Incoming WebHooksの設定
+     + 自分のSlackアカウントにログイン
+     + [[https://nomlab.slack.com/apps/manage/custom-integrations][Custome Integrations]]へアクセス
+       + Slack画面左上の「nomlab」 -> 「Gets Slack Apps」 -> 左の欄の「Configure Apps」 -> 「Custom Integrations」
+     + 「Incoming WebHooks」をクリック
+     + 「Add Configuration」から，新たなIncoming WebHookを追加
+     + 送信するチャンネルを選択(WebHookを追加後にも変更可能)し，「Add Incoming WebHooks integration」をクリックし，Webhook URLを取得
+       + Botの動作チェックを行うチャンネルは#sandboxが良い
+       + 必要であれば，Customize NameもしくはCustomize Iconを設定
+   + Outgoing WebHooksの設定
+     + [[https://nomlab.slack.com/apps/manage/custom-integrations][Custome Integrations]]へアクセスし，「Outgoing WebHooks」をクリック
+     + 「Add Configuration」から，新たなOutgoing WebHookを追加
+     + 「Add Outgoing WebHooks integration」をクリック
+     + Outgoing WebHookに関して以下を設定
+       + Channel: 発言を監視するchannel
+       + Trigger Word(s): WebHookが動作する契機となる単語
+       + URL(s): WebHookが動作した際にPOSTを行うURL
+     + 必要であれば，Customize NameもしくはCustomize Iconを設定
+   + 以下のコマンドを実行し，settings.yml.sampleをsettings.ymlに変更
+     : $ cp settings.yml.sample settings.yml
+   + 取得したIncomming WebHook URLをsettings.ymlに書き込む．
+     + incoming_webhook_url: https://XXXXXXXXXXXX
+   + Herokuのセットアップ
+     + [[https://www.heroku.com/][Heroku]] にアクセスし，「Sign up」から新しいアカウントを登録する．
+       + Company nameは記入せず，使用する言語はRubyとする．
+       + Herokuから送信されたメールのURLをクリックし，パスワードを設定する．
+     + 登録したアカウントでログインし，「Getting Started with Heroku」の「Ruby」を選択する．
+     + 「I'm ready to start」をクリックし，「Download Heroku Toolbelt for...」からToolbeltをダウンロードする．
+     + ターミナルで以下のコマンドを実行し，Toolbeltがインストールされたことを確認する．
+       : $ heroku version
+     + 以下のコマンドを実行し，Herokuにログインする．
+       : $ heroku login
+     + Heroku上にアプリケーションを生成するために以下のコマンドを実行する．
+       : $ heroku create <myapp_name>
+       + アプリケーション名は小文字と数字，およびハイフンのみ使用できる．
+     + 生成したアプリケーションがremoteに登録されていることを確認する．
+       : $ git remote -v
+       : heroku	https://git.heroku.com/<myapp_name>.git (fetch)
+       : heroku	https://git.heroku.com/<myapp_name>.git (push)
+     + 以下のコマンドを実行し，Incoming WebHook URLをHerokuの環境変数に追加する．
+       : $ heroku config:set INCOMING_WEBHOOK_URL="https://XXXXXXXXXXXX"
+
+** Deploy or Run
+   + 以下のコマンドを実行し，Herokuにアプリケーションをデプロイできる．
+     : $ git push heroku master
+   + Herokuにデプロイされている場合，以下のコマンドで<application_name>.herokuapp.com/にアクセスできる．
+     : $ heroku open
+   + テストのためにローカルでアプリケーションを動作させる場合，以下のコマンドでMySlackBot.rbを実行．
+     : $ bundle exec rackup config.ru
+   + ソースコードを改変し，ローカルで動作確認ができたら，変更をcommitし，Herokuにデプロイする．
+     : $ git add <changed files>
+     : $ git commit
+     : $ git push heroku master
+
+** Tips
+   + Herokuにアプリケーションをデプロイする際は，ローカルで動作確認してからcommit，pushする．
+   + Slackや他のWebサービスのOutgoing WebHooksを用いた機能のテストをローカルで行いたい場合，testディレクトリ以下のpost_json.rbを利用すると良い．
+     + ローカルでMySlackBot.rbをデプロイし，post_test.rbを用いてWebサービスを装いテストする．
+     + 第1引数にPOST先URL，第2引数にPOSTするJSONが格納されているファイルパスを指定する．
+       : $ ruby test/post_test.rb http://localhost:<port>/<path> test/test.json
+     + 利用するWebHookがどのようなリクエストをPOSTするかを確認し，リクエスト例を用意する．
+     + リクエストのContent-TypeがJSONではない場合，post_test.rbに機能を追加し，JSON以外のContent-Typeを送れるように工夫する．
+   + 初期の実装では，誰でもSlackになりすましてPOSTを行い，Botを動作させることが可能である．
+     + 自身が設定したOutgoing WebHooksのみで動作するようにできると良い．
+     + このとき，ローカルでのテスト用スクリプトpost_test.rbが問題なく動作するように改変を加える．
+   + Outgoing WebHooksと同じくあるイベントを契機に指定したURLにPOSTする機能としてSlash Commandsが提供されている．
+     + Slash Commandsでは，Slackにスラッシュ(/)から始まるコマンドを登録し，コマンドが実行された時にPOSTを行う．
+     + Outgoing WebHooksとSlash Commandsの違いについて考察し，Slash Commandを用いたBotの機能を実装できると良い．
+   + Slackの提供するWeb APIを利用することでSlackの情報を能動的に取得することが可能である．
+   + Outgoing WebHooksの代わりにSlackの提供するReal Time Messaging APIを用いてもSlackの発言をリアルタイムで取得できる．
+     + Outgoing WebHooksとReal Time Messaging APIの違いについて考察し，それぞれを用いたBotが実装できると良い．
+     + Real Time Messaging APIをRubyで扱う場合はGemを用いると良い．
+   + SlackのWeb APIとReal Time Messaging APIを利用するためにはアクセストークンが必要である．
+     + アクセストークンを取得する方法の1つとして，[[https://nomlab.slack.com/apps/manage/custom-integrations][Custome Integrations]]で新規のBotsを作成するとアクセストークンを取得できる．
+
+** References
+   + Slackに関する参考サイトのURLを以下に示す．
+     + Incoming Webhooksについて
+       + https://api.slack.com/incoming-webhooks
+     + Outgoing Webhooksについて
+       + https://api.slack.com/outgoing-webhooks
+     + Slash Commandsについて
+       + https://api.slack.com/slash-commands
+     + Web APIについて
+       + https://api.slack.com/web
+       + https://api.slack.com/methods
+     + Real Time Messaging APIについて
+       + https://api.slack.com/rtm
+       + https://api.slack.com/events
+       + https://github.com/aki017/slack-ruby-gem
+   + Sinatraに関する参考サイトのURLを以下に示す．
+     + http://www.sinatrarb.com/intro-ja.html
+
+** Details
+   + 課題の詳細はnompediaの新人研修課題に記載する．
+     https://github.com/nomlab/nompedia/wiki/Boot-Camp-2016-GN
